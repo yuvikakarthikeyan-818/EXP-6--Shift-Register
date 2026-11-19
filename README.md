@@ -20,17 +20,76 @@ else Q <= {Q[2:0], sin};   // shift left, sin enters at LSB
 Serial output: sout = Q[3]   (the bit about to be shifted out)
 
 ## Design / RTL Program
-```
+module shift_reg (
+    input  wire       clk,   // clock
+    input  wire       rst,   // asynchronous active-high reset
+    input  wire       sin,   // serial input
+    output wire       sout,  // serial output (MSB, about to shift out)
+    output reg  [3:0] Q      // parallel output
+);
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            Q <= 4'b0000;
+        else
+            Q <= {Q[2:0], sin};   // shift left, sin enters at LSB
+    end
+ 
+    assign sout = Q[3];
+endmodule
 
 Testbench Program
 
-
-
+module tb6;
+    reg  clk, rst, sin;
+    wire sout;
+    wire [3:0] Q;
+ 
+    // Instantiate the shift register
+    shift_reg uut (
+        .clk(clk),
+        .rst(rst),
+        .sin(sin),
+        .sout(sout),
+        .Q(Q)
+    );
+ 
+    // ---- Clock generation: 10 time-unit period ----
+    initial clk = 0;
+    always #5 clk = ~clk;
+ 
+    initial begin
+        // ---- VCD dump setup ----
+        $dumpfile("shift_reg.vcd");   // name of the VCD file to be generated
+        $dumpvars(0, tb6);              // dump all signals in this testbench hierarchy
+ 
+        $monitor("Time=%0t rst=%b clk=%b sin=%b | Q=%b sout=%b",
+                  $time, rst, clk, sin, Q, sout);
+ 
+        // ---- Apply asynchronous reset ----
+        rst = 1; sin = 0;
+        #7  rst = 0;
+ 
+        // ---- Serially shift in the bit pattern 1 0 1 1 ----
+        @(negedge clk); sin = 1;
+        @(negedge clk); sin = 0;
+        @(negedge clk); sin = 1;
+        @(negedge clk); sin = 1;
+ 
+        // ---- Hold sin = 0 and observe the pattern shift out ----
+        @(negedge clk); sin = 0;
+        @(negedge clk);
+        @(negedge clk);
+ 
+        // ---- Apply reset again mid-simulation ----
+        @(negedge clk); rst = 1;
+        @(negedge clk); rst = 0; sin = 1;
+ 
+        #20 $finish;
+    end
+endmodule
 
 ## Operation / Truth Table
-
-Register contents after each active clock edge (sin sequence = 1, 0, 1, 1)
-<img width="406" height="181" alt="image" src="https://github.com/user-attachments/assets/7a5c1c67-a5d5-4160-938b-3647f8630dd7" />
+<img width="572" height="296" alt="image" src="https://github.com/user-attachments/assets/635fd061-09c6-4948-a0eb-37b7dbfa574e" />
 
 ## Simulation Procedure
 
@@ -84,27 +143,7 @@ The design was compiled and simulated using Synopsys VCS, and the functionality 
 
 ## Output
 
-
-
-## Viva-Voce Questions
-
-●	What is a shift register, and what are its four basic types (SISO, SIPO, PISO, PIPO)?
-
-●	How does a SIPO shift register differ from a PISO shift register?
-
-●	How many clock pulses are required to fully load a 4-bit SIPO shift register with serial data?
-
-●	How would you modify the design to shift right instead of left?
-
-●	How would you convert this SIPO register into a Serial-In Serial-Out (SISO) register?
-
-●	What is the purpose of the asynchronous reset in this design?
-
-●	Why is a VCD file generated, and what does $dumpvars(0, tb) do?
-
-●	How can a shift register be used to implement a ring counter or Johnson counter?
-
-●	What is the difference between a shift register built from D flip-flops versus one described behaviourally in Verilog, in terms of simulation versus synthesis?
+<img width="1912" height="1016" alt="EXP 6 DLCD" src="https://github.com/user-attachments/assets/aaace574-fd99-433b-8c83-a8685688c4b1" />
 
 ## Result
 
